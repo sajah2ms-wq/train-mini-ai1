@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Train Your Mini AI — Introduction to AI</title>
+<style>
+  body {
+    font-family: 'Times New Roman', serif;
+    background: linear-gradient(135deg, #eaf0f8, #dbe6f5);
+    margin: 0;
+    padding: 40px 20px;
+    color: #1A1A1A;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px 40px 40px;
+    box-shadow: 0 10px 30px rgba(18,53,91,0.15);
+  }
+  h1 {
+    color: #12355B;
+    font-size: 30px;
+    margin: 0 0 6px;
+  }
+  p.subtitle {
+    color: #444;
+    font-size: 17px;
+    margin: 0 0 24px;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  button {
+    font-family: 'Times New Roman', serif;
+    font-size: 15px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 2px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  button:hover { background: #f2f2f2; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  #status {
+    font-size: 15px;
+    color: #444;
+    margin: 0 0 16px;
+    min-height: 22px;
+  }
+  .main {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  svg {
+    background: #f7f9fc;
+    border: 1px solid #d7dde8;
+    border-radius: 10px;
+    cursor: crosshair;
+  }
+  .sidebar {
+    min-width: 220px;
+    flex: 1;
+    font-size: 15px;
+    color: #444;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .legend-row.border { border-bottom: 1px solid #e2e2e2; margin-bottom: 10px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .count { margin-left: auto; font-weight: bold; color: #12355B; }
+  footer {
+    margin-top: 28px;
+    font-size: 13px;
+    color: #999;
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🤖 Train Your Mini AI</h1>
+  <p class="subtitle">A hands-on look at Data → Algorithms → Learning — click to teach a simple AI, then test what it learned.</p>
+
+  <div class="controls">
+    <button id="modeA" style="border:2px solid #185FA5; background:#E6F1FB; color:#042C53; font-weight:bold;">⚽ add football player</button>
+    <button id="modeB">🏐 add volleyball player</button>
+    <button id="trainBtn" disabled>Train the AI</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <p id="status">Step 1 — click inside the grid to place a few football and volleyball players</p>
+
+  <div class="main">
+    <div>
+      <svg id="plot" viewBox="0 0 320 320" width="320" height="320">
+        <line x1="20" y1="300" x2="310" y2="300" stroke="#999" stroke-width="1"/>
+        <line x1="20" y1="10" x2="20" y2="300" stroke="#999" stroke-width="1"/>
+        <text x="165" y="315" text-anchor="middle" font-size="12" fill="#777">height (short → tall)</text>
+        <text x="10" y="160" text-anchor="middle" font-size="12" fill="#777" transform="rotate(-90 10 160)">vertical jump (low → high)</text>
+        <g id="boundary"></g>
+        <g id="points"></g>
+        <g id="testMarker"></g>
+      </svg>
+    </div>
+    <div class="sidebar">
+      <div class="legend-row border">
+        <span class="dot" style="background:#378ADD;"></span>
+        <span>⚽ football examples</span>
+        <span class="count" id="countA">0</span>
+      </div>
+      <div class="legend-row border">
+        <span class="dot" style="background:#D85A30;"></span>
+        <span>🏐 volleyball examples</span>
+        <span class="count" id="countB">0</span>
+      </div>
+      <p>Add at least 3 of each, then press <b>Train the AI</b>. After training, click anywhere on the grid to see what the AI predicts for a new player.</p>
+    </div>
+  </div>
+
+  <footer>Introduction to AI — Asst. Lect. Saja Hassan Musa, University of Kerbala</footer>
+</div>
+
+<script>
+(function(){
+  var svg = document.getElementById('plot');
+  var pointsG = document.getElementById('points');
+  var boundaryG = document.getElementById('boundary');
+  var testG = document.getElementById('testMarker');
+  var status = document.getElementById('status');
+  var mode = 'a';
+  var trained = false;
+  var examples = [];
+  var ICON = {a:'⚽', b:'🏐'};
+  var NAME = {a:'football', b:'volleyball'};
+  var COLOR = {a:'#378ADD', b:'#D85A30'};
+  var COLOR_DARK = {a:'#042C53', b:'#4A1B0C'};
+
+  function setMode(m){
+    mode = m;
+    var btnA = document.getElementById('modeA'), btnB = document.getElementById('modeB');
+    if(m==='a'){
+      btnA.style.border='2px solid #185FA5'; btnA.style.background='#E6F1FB'; btnA.style.color='#042C53'; btnA.style.fontWeight='bold';
+      btnB.style.border='2px solid #ccc'; btnB.style.background='#fff'; btnB.style.color='#1A1A1A'; btnB.style.fontWeight='normal';
+    } else {
+      btnB.style.border='2px solid #993C1D'; btnB.style.background='#FAECE7'; btnB.style.color='#4A1B0C'; btnB.style.fontWeight='bold';
+      btnA.style.border='2px solid #ccc'; btnA.style.background='#fff'; btnA.style.color='#1A1A1A'; btnA.style.fontWeight='normal';
+    }
+  }
+  setMode('a');
+  document.getElementById('modeA').onclick = function(){ mode='a'; trained=false; testG.innerHTML=''; boundaryG.innerHTML=''; status.textContent='Step 1 — click inside the grid to place a few football and volleyball players'; setMode('a'); };
+  document.getElementById('modeB').onclick = function(){ mode='b'; trained=false; testG.innerHTML=''; boundaryG.innerHTML=''; status.textContent='Step 1 — click inside the grid to place a few football and volleyball players'; setMode('b'); };
+
+  function counts(){
+    var a = examples.filter(function(e){return e.label==='a';}).length;
+    var b = examples.filter(function(e){return e.label==='b';}).length;
+    document.getElementById('countA').textContent = a;
+    document.getElementById('countB').textContent = b;
+    document.getElementById('trainBtn').disabled = !(a>=3 && b>=3);
+    return {a:a,b:b};
+  }
+
+  function drawPoint(x,y,label){
+    var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r',11);
+    circle.setAttribute('fill', COLOR[label]);
+    circle.setAttribute('fill-opacity','0.25');
+    circle.setAttribute('stroke', COLOR[label]);
+    circle.setAttribute('stroke-width','1.5');
+    g.appendChild(circle);
+    var c = document.createElementNS('http://www.w3.org/2000/svg','text');
+    c.setAttribute('x', x); c.setAttribute('y', y+5);
+    c.setAttribute('text-anchor','middle');
+    c.setAttribute('font-size','15');
+    c.textContent = ICON[label];
+    g.appendChild(c);
+    pointsG.appendChild(g);
+  }
+
+  svg.addEventListener('click', function(e){
+    var rect = svg.getBoundingClientRect();
+    var scaleX = 320/rect.width, scaleY = 320/rect.height;
+    var x = (e.clientX-rect.left)*scaleX, y = (e.clientY-rect.top)*scaleY;
+    if(x<20||x>310||y<10||y>300) return;
+
+    if(!trained){
+      examples.push({x:x,y:y,label:mode});
+      drawPoint(x,y,mode);
+      counts();
+    } else {
+      testG.innerHTML='';
+      var centA = centroid('a'), centB = centroid('b');
+      var dA = Math.hypot(x-centA.x,y-centA.y), dB = Math.hypot(x-centB.x,y-centB.y);
+      var pred = dA<dB ? 'a' : 'b';
+      var ring = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      ring.setAttribute('cx',x); ring.setAttribute('cy',y); ring.setAttribute('r',14);
+      ring.setAttribute('fill','none');
+      ring.setAttribute('stroke', COLOR[pred]);
+      ring.setAttribute('stroke-width','3');
+      testG.appendChild(ring);
+      var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',x); t.setAttribute('y',y+5); t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','16');
+      t.textContent = ICON[pred];
+      testG.appendChild(t);
+      status.innerHTML = 'The AI predicts: <b style="color:'+COLOR_DARK[pred]+'">'+ICON[pred]+' '+NAME[pred]+' player</b> — click elsewhere to test another point';
+    }
+  });
+
+  function centroid(label){
+    var pts = examples.filter(function(e){return e.label===label;});
+    var sx=0, sy=0;
+    pts.forEach(function(p){sx+=p.x; sy+=p.y;});
+    return {x: sx/pts.length, y: sy/pts.length};
+  }
+
+  document.getElementById('trainBtn').onclick = function(){
+    var centA = centroid('a'), centB = centroid('b');
+    var mx = (centA.x+centB.x)/2, my = (centA.y+centB.y)/2;
+    var dx = centB.x-centA.x, dy = centB.y-centA.y;
+    var len = Math.hypot(dx,dy) || 1;
+    var px = -dy/len, py = dx/len;
+    var x1 = mx+px*200, y1 = my+py*200, x2 = mx-px*200, y2 = my-py*200;
+    boundaryG.innerHTML = '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#534AB7" stroke-width="2.5" stroke-dasharray="6,4"/>';
+    trained = true;
+    status.textContent = 'Trained! Now click anywhere in the grid to see what the AI predicts.';
+  };
+
+  document.getElementById('resetBtn').onclick = function(){
+    examples=[]; trained=false;
+    pointsG.innerHTML=''; boundaryG.innerHTML=''; testG.innerHTML='';
+    counts();
+    status.textContent = 'Step 1 — click inside the grid to place a few football and volleyball players';
+  };
+
+  counts();
+})();
+</script>
+</body>
+</html>
